@@ -7,7 +7,7 @@ const asyncHandler = (callbackFn) => {
         success: error.success,
         message: error.message,
       });
-      throw error; // IMPORTANT: Otherwise the backend will not send error to the client
+      // throw err; // IMPORTANT:  The backend will stop forever once any error is found in any API-route
     }
   };
 };
