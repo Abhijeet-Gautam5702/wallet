@@ -1,4 +1,4 @@
-const PORT = 8000;
+const PORT = 3000;
 
 const DB_NAME = "wallet";
 

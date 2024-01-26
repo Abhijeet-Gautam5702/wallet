@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema(
   {
@@ -14,17 +15,28 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    firstName: {
+    firstname: {
       type: String,
       required: true,
+      trim: true,
     },
-    lastName: {
+    lastname: {
       type: String,
-      required: true,
+      required: false,
+      trim: true,
     },
   },
   { timestamps: true }
 );
+
+// MONGOOSE PRE-MIDDLEWARE: Hash the password (only if it was newly created or modified) before any document gets saved
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return;
+  }
+  const hashedPassword = await bcrypt.hash(this.password, 10);
+  this.password = hashedPassword;
+});
 
 const User = mongoose.model("User", userSchema);
 

@@ -3,9 +3,11 @@ import connectDatabase from "./db/db.js";
 import { PORT } from "./constants.js";
 import app from "./app.js";
 
-dotenv.config();
+dotenv.config({
+  path:".env"
+});
 
-const port = PORT || 8000;
+const port = PORT || 3000;
 
 await connectDatabase();
 try {
