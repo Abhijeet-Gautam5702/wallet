@@ -1,10 +1,20 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import customError from "../utils/customError.js";
 import customResponse from "../utils/customResponse.js";
-import { UserZodSchema } from "../models/zod.schema.js";
+import {
+  UserSignInZodSchema,
+  UserSignUpZodSchema,
+} from "../models/zod.schema.js";
 import User from "../models/user.models.js";
+import generateTokens from "../utils/tokenGenerator.js";
 
-const userRegister = asyncHandler(async (req, res) => {
+// Options for Cookies to make them secure
+const cookieOptions = {
+  httpOnly: true,
+  success: true,
+};
+
+const userSignup = asyncHandler(async (req, res) => {
   // Get user data from the client
   const { email, password, firstname, lastname } = req.body;
 
@@ -19,7 +29,7 @@ const userRegister = asyncHandler(async (req, res) => {
 
   // Check whether all data is in the prescribed format using zod
   const user = { firstname, lastname, email, password };
-  const isDataFormatCorrect = UserZodSchema.safeParse(user).success;
+  const isDataFormatCorrect = UserSignUpZodSchema.safeParse(user).success;
   if (!isDataFormatCorrect) {
     throw new customError(400, "Format of the user data is incorrect");
   }
@@ -30,7 +40,7 @@ const userRegister = asyncHandler(async (req, res) => {
     throw new customError(409, "User with the given email already exists");
   }
 
-  // [BUG] :: Create a new user in the database with the given details
+  // Create a new user in the database with the given details
   const newUser = await User.create({
     email: email,
     firstname: firstname,
@@ -53,4 +63,75 @@ const userRegister = asyncHandler(async (req, res) => {
     .json(new customResponse(200, createdUser, "User registration successful"));
 });
 
-export { userRegister };
+const userSignin = asyncHandler(async (req, res) => {
+  // Get email and password from the request body
+  const { email, password } = req.body;
+  if (!email || !password) {
+    throw new customError(
+      401,
+      "Both email and password are required to sign in"
+    );
+  }
+
+  // Check the format of the data provided by the client
+  const isDataFormatCorrect = UserSignInZodSchema.safeParse({
+    email,
+    password,
+  }).success;
+  if (!isDataFormatCorrect) {
+    throw new customError(400, "Invalid format of data");
+  }
+
+  // Check if the user with the given email is present in the database
+  const isUserExists = await User.findOne({
+    email,
+  });
+  if (!isUserExists) {
+    throw new customError(
+      404,
+      "User with the given credentials doesn't exist in the database"
+    );
+  }
+
+  // Check if the correct password is provided by the user
+  const isPasswordCorrect = await isUserExists.validatePassword(password);
+  if (!isPasswordCorrect) {
+    throw new customError(401, "Incorrect password");
+  }
+
+  // Create access and refresh tokens
+  const { accessToken, refreshToken } = await generateTokens(isUserExists);
+  if (!accessToken || !refreshToken) {
+    throw new customError(
+      500,
+      "User could not be signed in | Tokens could not be generated successfully"
+    );
+  }
+
+  // Give the refresh token to the user in the database
+  const updatedUser = await User.findByIdAndUpdate(
+    isUserExists._id,
+    {
+      refreshToken: refreshToken,
+    },
+    { new: true }
+  ).select("-password");
+
+  // Send the tokens to the cookies with the success response
+  res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+      new customResponse(
+        200,
+        {
+          user: updatedUser,
+          accessToken: accessToken,
+        },
+        "User signed in successfully"
+      )
+    );
+});
+
+export { userSignup, userSignin };
