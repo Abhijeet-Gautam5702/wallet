@@ -134,4 +134,33 @@ const userSignin = asyncHandler(async (req, res) => {
     );
 });
 
-export { userSignup, userSignin };
+const userSignout = asyncHandler(async (req, res) => {
+  // Authentication: Verify whether the user is authorized to hit the sign-out route
+  // Get the user-id from the req.user object injected by the auth-middleware
+  const userId = req.user._id;
+
+  // Clear the refresh token from the user in the database
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    {
+      refreshToken: "",
+    },
+    { new: true }
+  ).select("-password");
+  if (updatedUser.refreshToken) {
+    throw new customError(
+      500,
+      "User could not be signed out | Refresh Token could not be cleared"
+    );
+  }
+
+  // Clear the access and refresh tokens in the cookies
+  // Send success response to the client
+  res
+    .status(200)
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
+    .json(new customResponse(200, {}, "User signed out successfully"));
+});
+
+export { userSignup, userSignin, userSignout };
