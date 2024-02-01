@@ -182,7 +182,7 @@ const userAccountUpdate = asyncHandler(async (req, res) => {
       lastname: lastname?.trim() || req.user.lastname,
     },
     { new: true }
-  ).select("-password -refreshToken");// exclude 'password' and 'refreshToken' field from the instance of the user document returned by this method
+  ).select("-password -refreshToken"); // exclude 'password' and 'refreshToken' field from the instance of the user document returned by this method
 
   // Send success response to the user
   res
@@ -192,4 +192,52 @@ const userAccountUpdate = asyncHandler(async (req, res) => {
     );
 });
 
-export { userSignup, userSignin, userSignout, userAccountUpdate };
+const getFilteredListOfUsers = asyncHandler(async (req, res) => {
+  // Authorization: Verify whether the user is authorized to hit this secured-route
+
+  // Get the filter-query from req.params
+  const filterName = req.query?.filter?.trim();
+  if (!filterName) {
+    throw new customError(401, "Please enter a filter to search");
+  }
+
+  // Find all the users in the database with firstname or lastname as the filterName
+  /*
+    NOTE: We wish to filter the users based on the following cases:-
+          - The filterName can be present either in the firstname or lastname fields
+          - The filterName can be present in the middle of the firstname or lastname fields
+          - The filter search results should be case-insensitive, i.e., "abhijeet" and "Abhijeet" should give the same search results
+    
+    In order to achieve the above situation, we use regular expressions (with case-insensitivity) along with Mongoose Query Chaining
+  */
+  const filteredUsers = await User.find({
+    $or: [
+      {
+        firstname: {
+          $regex: new RegExp(filterName, "i"), //"i" means case-insensitivity
+        },
+      },
+      {
+        lastname: {
+          $regex: new RegExp(filterName, "i"),
+        },
+      },
+    ],
+  }).select("firstname lastname _id"); // Query Projection: only include these fields in the document instances
+  if (!filteredUsers.length) {
+    throw new customError(404, "No users found with the given filter");
+  }
+
+  // Send success response to the user
+  res
+    .status(200)
+    .json(new customResponse(200, filteredUsers, "Users fetched successfully"));
+});
+
+export {
+  userSignup,
+  userSignin,
+  userSignout,
+  userAccountUpdate,
+  getFilteredListOfUsers,
+};
