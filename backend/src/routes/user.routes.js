@@ -4,7 +4,7 @@ import {
   userSignout,
   userSignup,
   userAccountUpdate,
-  getFilteredListOfUsers,
+  getFilteredListOfUsers,getCurrentUser
 } from "../controllers/user.controllers.js";
 import authorizeUser from "../middlewares/auth.middlewares.js";
 
@@ -19,4 +19,6 @@ userRouter
   .route("/update-account-details")
   .put(authorizeUser, userAccountUpdate);
 userRouter.route("/bulk").get(authorizeUser, getFilteredListOfUsers);
+userRouter.route("/current-user").get(authorizeUser, getCurrentUser)
+
 export default userRouter;

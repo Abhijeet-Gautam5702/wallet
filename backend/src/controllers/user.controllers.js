@@ -234,10 +234,38 @@ const getFilteredListOfUsers = asyncHandler(async (req, res) => {
     .json(new customResponse(200, filteredUsers, "Users fetched successfully"));
 });
 
+const getCurrentUser = asyncHandler(async (req, res) => {
+  // Authorization: Check whether the current user is authorized to hit this secured-route
+
+  // Get the userId from req.user object injected by the Auth-middleware
+  const userId = req.user._id;
+
+  // Get the instance of user from the database without sensitive information
+  const user = await User.findById(userId).select("-password -refreshToken");
+  if (!user) {
+    throw new customError(
+      500,
+      "User details could not be fetched from the backend"
+    );
+  }
+
+  // Send success response to the user with the current-user data (without sensitive info)
+  res
+    .status(200)
+    .json(
+      new customResponse(
+        200,
+        user,
+        "Currently logged-in user fetched successfully"
+      )
+    );
+});
+
 export {
   userSignup,
   userSignin,
   userSignout,
   userAccountUpdate,
   getFilteredListOfUsers,
+  getCurrentUser,
 };
