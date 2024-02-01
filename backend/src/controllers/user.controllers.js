@@ -135,7 +135,7 @@ const userSignin = asyncHandler(async (req, res) => {
 });
 
 const userSignout = asyncHandler(async (req, res) => {
-  // Authentication: Verify whether the user is authorized to hit the sign-out route
+  // Authorization: Verify whether the user is authorized to hit the sign-out route
   // Get the user-id from the req.user object injected by the auth-middleware
   const userId = req.user._id;
 
@@ -163,4 +163,33 @@ const userSignout = asyncHandler(async (req, res) => {
     .json(new customResponse(200, {}, "User signed out successfully"));
 });
 
-export { userSignup, userSignin, userSignout };
+const userAccountUpdate = asyncHandler(async (req, res) => {
+  // Authorization: Verify whether the user is authorized to hit this secured-route
+
+  // Get data from the user
+  const { email, firstname, lastname, password } = req.body;
+
+  // Get the userId from the req.user object injected by the Auth-Middlware
+  const userId = req.user._id;
+
+  // Get the user and update the fields provided by the user
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      email: email?.trim() || req.user.email,
+      password: password?.trim() || req.user.password,
+      firstname: firstname?.trim() || req.user.firstname,
+      lastname: lastname?.trim() || req.user.lastname,
+    },
+    { new: true }
+  ).select("-password -refreshToken");// exclude 'password' and 'refreshToken' field from the instance of the user document returned by this method
+
+  // Send success response to the user
+  res
+    .status(200)
+    .json(
+      new customResponse(200, user, "User account details updated successfully")
+    );
+});
+
+export { userSignup, userSignin, userSignout, userAccountUpdate };
