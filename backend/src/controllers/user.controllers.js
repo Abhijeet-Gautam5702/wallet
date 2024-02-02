@@ -7,6 +7,7 @@ import {
 } from "../models/zod.schema.js";
 import User from "../models/user.models.js";
 import generateTokens from "../utils/tokenGenerator.js";
+import Account from "../models/account.models.js";
 
 // Options for Cookies to make them secure
 const cookieOptions = {
@@ -57,10 +58,30 @@ const userSignup = asyncHandler(async (req, res) => {
   // Obtain the newly created user data excluding sensitive info (password)
   const createdUser = await User.findOne({ email }).select("-password");
 
+  // Create a bank account for the user
+  // Give a random balance b/w 1-10000 to the user at signup (similar to sign-up bonus)
+  const userId = createdUser._id; // get user-id of the newly created user
+  const userBankAccount = await Account.create({
+    userId,
+    balance: Math.random() * 10000,
+  });
+  if (!userBankAccount) {
+    throw new customError(
+      500,
+      "User Bank Account could not be created successfully"
+    );
+  }
+
   // Send success response to the client
   res
     .status(200)
-    .json(new customResponse(200, createdUser, "User registration successful"));
+    .json(
+      new customResponse(
+        200,
+        createdUser,
+        "User registration and bank account creation successful"
+      )
+    );
 });
 
 const userSignin = asyncHandler(async (req, res) => {
